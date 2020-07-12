@@ -13,12 +13,15 @@
 typedef struct _aa_type {
 	int Index;
 	char *Key;
-	char *Value;
+	char *StrValue;
+	double DataValue;
 } AA_TYPE;
 
 int AAInit(int Size);
-int AASet(char *Key, char *Value);
-char *AAGet(char *Key);
+int AASetStr(char *Key, char *Value);
+int AASetData(char *Key, double Value);
+char *AAGetStr(char *Key);
+double AAGetData(char *Key);
 void AACleanUp(void);
 int AASplit(char *Input, char **Key, char **Value);
 
@@ -40,12 +43,12 @@ int AAInit(int Size)
 	return Size;
 }
 
-int AASet(char *Key, char *Value)
+int AASetStr(char *Key, char *Value)
 {
 	int i = 0;
-	char *existing = AAGet(Key);
+	char *existing = AAGetStr(Key);
 	if (!existing) {
-		i = AaCurrent;
+		i = AaCurrent++;
 	}
 	else {
 		//printf("existing! i=%d\n", i);
@@ -59,13 +62,39 @@ int AASet(char *Key, char *Value)
 	}
 	AaTable[i].Index = i;
 	AaTable[i].Key = Key;
-	AaTable[i].Value = Value;
-	AaCurrent++;
+	AaTable[i].StrValue = Value;
 
 	return(i);
 }
 
-char *AAGet(char *Key)
+int AASetData(char *Key, double Value)
+{
+	int i = 0;
+	char *existing = AAGetStr(Key);
+	if (!existing) {
+		i = AaCurrent++;
+	}
+	else {
+		//printf("existing! i=%d\n", i);
+		for(i = 0; i < AaCurrent; i++) {
+			//printf("%d:%d<%s:%s>=<%s>\n", i, AaTable[i].Index, Key,
+			//       AaTable[i].Key, AaTable[i].Value);
+			if (!strcmp(Key, AaTable[i].Key)) {
+				break;
+			}
+		}
+	}
+	AaTable[i].Index = i;
+	AaTable[i].Key = Key;
+	if (AaTable[i].StrValue == NULL)
+		AaTable[i].StrValue = Key;
+	AaTable[i].DataValue = Value;
+
+
+	return(i);
+}
+
+char *AAGetStr(char *Key)
 {
 	int i;
 	for(i = 0; i < AaCurrent; i++) {
@@ -75,7 +104,20 @@ char *AAGet(char *Key)
 		if (!strcmp(Key, AaTable[i].Key))
 			break;
 	}
-	return AaTable[i].Value;
+	return AaTable[i].StrValue;
+}
+
+double AAGetData(char *Key)
+{
+	int i;
+	for(i = 0; i < AaCurrent; i++) {
+		if (AaTable[i].Key == NULL) {
+			return 0.00D;
+		}
+		if (!strcmp(Key, AaTable[i].Key))
+			break;
+	}
+	return AaTable[i].DataValue;
 }
 
 void AACleanUp(void)
@@ -83,7 +125,8 @@ void AACleanUp(void)
 	int i;
 	for(i = 0; i < AaCurrent; i++) {
 		free(AaTable[i].Key);
-		free(AaTable[i].Value);
+		free(AaTable[i].StrValue);
+		AaTable[i].DataValue = 0.00D;
 	}
 	AaCurrent = 0;
 }
@@ -104,6 +147,7 @@ int AASplit(char *Input, char **Key, char **Value)
 	return(separeter - buffer);
 }
 
+#if 1
 /*
  *
  */
@@ -147,24 +191,25 @@ int main(int ac, char** av)
 	for(i = 0; Samples[i] != NULL; i++) {
 		rtn = AASplit(Samples[i], &key, &value);
 		if (rtn > 0) {
-			rtn = AASet(key, value);
+			rtn = AASetStr(key, value);
 			printf("AASet=%d %s %s\n", rtn, key, value);
 		}
 	}
 
 	printf("\n");
 	for(i = 0; AaTable[i].Key != NULL; i++) {
-		printf("%d:%d<%s>=<%s>\n", i, AaTable[i].Index,
-		       AaTable[i].Key, AaTable[i].Value);
+		printf("%d:%d<%s>=<%s><%.2f>\n", i, AaTable[i].Index,
+		       AaTable[i].Key, AaTable[i].StrValue), AaTable[i].DataValue;
 	}
 	
 	printf("\n");
 	for(i = 0; Tests[i] != NULL; i++) {
 		char *out;
 			
-		out = AAGet(Tests[i]);
+		out = AAGetStr(Tests[i]);
 		printf("AAGet-%d: %s=%s\n", i, Tests[i], out);
 	}
 	
 	return 0;
 }
+#endif
