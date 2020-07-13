@@ -4,6 +4,8 @@
 #include <string.h>
 #include <ctype.h>
 
+//#define UNIT_TEST (1)
+
 //
 // Simple Associative Aarray
 //
@@ -15,16 +17,16 @@ typedef struct _aa_type {
 	char *Key;
 	int Valid;
 	char *StrValue;
-	double DataValue;
+	char *DataValue;
 } AA_TYPE;
 
 int AAInit(int Size);
 int AASetMark(char *Key, int Mark);
 int AAGetMark(char *Key);
 int AASetStr(char *Key, char *Value);
-int AASetData(char *Key, double Value);
+int AASetData(char *Key, char *DataValue);
 char *AAGetStr(char *Key);
-double AAGetData(char *Key);
+char *AAGetData(char *Key);
 void AACleanUp(void);
 int AASplit(char *Input, char **Key, char **Value);
 
@@ -106,7 +108,7 @@ int AASetStr(char *Key, char *Value)
 	return(i);
 }
 
-int AASetData(char *Key, double Value)
+int AASetData(char *Key, char *DataValue)
 {
 	int i = 0;
 	char *existing = AAGetStr(Key);
@@ -128,7 +130,10 @@ int AASetData(char *Key, double Value)
 	if (AaTable[i].StrValue == NULL) {
 		AaTable[i].StrValue = Key;
 	}
-	AaTable[i].DataValue = Value;
+	if (AaTable[i].DataValue != NULL) {
+		free(AaTable[i].DataValue);
+	}
+	AaTable[i].DataValue = strdup(DataValue);
 	AaTable[i].Valid = 1;
 
 	return(i);
@@ -147,12 +152,12 @@ char *AAGetStr(char *Key)
 	return AaTable[i].StrValue;
 }
 
-double AAGetData(char *Key)
+char *AAGetData(char *Key)
 {
 	int i;
 	for(i = 0; i < AaCurrent; i++) {
 		if (AaTable[i].Key == NULL) {
-			return 0.00D;
+			return NULL;
 		}
 		if (!strcmp(Key, AaTable[i].Key))
 			break;
@@ -160,20 +165,20 @@ double AAGetData(char *Key)
 	return AaTable[i].DataValue;
 }
 
-int AAGetValidData(char *Key, double *pd)
+int AAGetValidData(char *Key, char *pd)
 {
 	int i;
 	for(i = 0; i < AaCurrent; i++) {
-		if (AaTable[i].Key == NULL) {
-			return -2;
-		}
 		if (!strcmp(Key, AaTable[i].Key))
 			break;
 	}
+	if (AaTable[i].Key == NULL) {
+		return -2;
+	}
 	if (AaTable[i].Valid) {
 	 	if (pd != NULL) {
-			*pd = AaTable[i].DataValue;
-		 }
+			strcpy(pd, AaTable[i].DataValue);
+		}
 		AaTable[i].Valid = 0;
 	}
 	else {
@@ -186,11 +191,18 @@ void AACleanUp(void)
 {
 	int i;
 	for(i = 0; i < AaCurrent; i++) {
-		free(AaTable[i].Key);
-		AaTable[i].Key = NULL;
-		free(AaTable[i].StrValue);
-		AaTable[i].StrValue = NULL;
-		AaTable[i].DataValue = 0.00D;
+		if (AaTable[i].Key != NULL) {
+			free(AaTable[i].Key);
+			AaTable[i].Key = NULL;
+		}
+		if (AaTable[i].StrValue != NULL) {
+			free(AaTable[i].StrValue);
+			AaTable[i].StrValue = NULL;
+		}
+		if (AaTable[i].DataValue != NULL) {
+			free(AaTable[i].DataValue);
+			AaTable[i].DataValue = NULL;
+		}
 		AaTable[i].Valid = 0;		
 	}
 	AaCurrent = 0;
@@ -212,7 +224,7 @@ int AASplit(char *Input, char **Key, char **Value)
 	return(separeter - buffer);
 }
 
-#if 1
+#if UNIT_TEST
 /*
  *
  */
@@ -250,8 +262,8 @@ int main(int ac, char** av)
 	char *key;
 	char *value;
 	int rtn;
-	double data;
-	double data2;
+	char data[128];
+	char data2[128];
 
 	AAInit(0);
 	
@@ -265,8 +277,8 @@ int main(int ac, char** av)
 
 	printf("\n");
 	for(i = 0; AaTable[i].Key != NULL; i++) {
-		printf("%d:%d<%s>=<%s><%.2f>\n", i, AaTable[i].Index,
-		       AaTable[i].Key, AaTable[i].StrValue), AaTable[i].DataValue;
+		printf("%d:%d<%s>=<%s><%s>\n", i, AaTable[i].Index,
+		       AaTable[i].Key, AaTable[i].StrValue, AaTable[i].DataValue);
 	}
 	
 	printf("\n");
@@ -277,25 +289,39 @@ int main(int ac, char** av)
 		printf("AAGet-%d: %s=%s\n", i, Tests[i], out);
 	}
 	
-	AASetData("AA", 1.12);
-	rtn = AAGetValidData("AA", &data);
-	i = AAGetValidData("AA", &data2);
-	printf("AA: %.3f:%d %.3f:%d\n", data, rtn, data2, i);
+	AASetData("AA", "1.12");
+	data[0] = '\0';
+	rtn = AAGetValidData("AA", data);
+	data2[0] = '\0';
+	i = AAGetValidData("AA", data2);
+	printf("AA: %s:%d %s:%d\n", data, rtn, data2, i);
 
-	AASetData("CC", 3.45);
-	rtn = AAGetValidData("CC", &data);
-	i = AAGetValidData("CC", &data2);
-	printf("CC: %.3f:%d %.3f:%d\n", data, rtn, data2, i);
+	AASetData("CC", "3.45");
+	data[0] = '\0';
+	rtn = AAGetValidData("CC", data);
+	data2[0] = '\0';
+	i = AAGetValidData("CC", data2);
+	printf("CC: %s:%d %s:%d\n", data, rtn, data2, i);
 
-	AASetData("DD", 3.45);
-	rtn = AAGetValidData("DD", &data);
-	i = AAGetValidData("DD", &data2);
-	printf("DD: %.3f:%d %.3f:%d\n", data, rtn, data2, i);
+	AASetData("DD", "4.56");
+	data[0] = '\0';
+	rtn = AAGetValidData("DD", data);
+	data2[0] = '\0';
+	i = AAGetValidData("DD", data2);
+	printf("DD: %s:%d %s:%d\n", data, rtn, data2, i);
 
-	rtn = AAGetValidData("EE", &data);
-	i = AAGetValidData("EE", &data2);
-	printf("EE: %.3f:%d %.3f:%d\n", data, rtn, data2, i);
+	data[0] = '\0';
+	rtn = AAGetValidData("EE", data);
+	data2[0] = '\0';
+	i = AAGetValidData("EE", data2);
+	printf("EE: %s:%d %s:%d\n", data, rtn, data2, i);
 
+	printf("\n");
+	for(i = 0; AaTable[i].Key != NULL; i++) {
+		printf("%d:%d<%s>=<%s><%s>\n", i, AaTable[i].Index,
+		       AaTable[i].Key, AaTable[i].StrValue, AaTable[i].DataValue);
+	}
+	
 	return 0;
 }
 #endif
